@@ -9,7 +9,9 @@
 - Antigravity: add Google OAuth token-account switching with selected-account refresh persistence (#937, fixes #936). Thanks @hhh2210!
 - Kiro: show account/auth details, plan labels, credit and bonus-credit balances, overage state, and Kiro-specific menu bar display options (#933, fixes #934). Thanks @solnikhil!
 - Moonshot / Kimi API: add API-key balance tracking, CLI support, docs, and menu bar balance copy (#899). Thanks @giuseppebisemi!
+- OpenRouter: show daily and weekly API key spend from `/api/v1/key` in the menu (#685). Thanks @ThiagoCAltoe!
 - Menu: add an opt-in setting for provider changelog links, starting with Codex, Claude Code, and Gemini CLI (#929, fixes #660). Thanks @ThiagoCAltoe!
+- Menu: add left/right arrow keyboard navigation for the merged provider switcher (#266).
 - Display: add a setting to hide quota-warning tick marks on usage bars while keeping quota warning notifications active (#918, fixes #916). Thanks @ThiagoCAltoe!
 - Codex: add tiered long-context and Fast/Priority pricing to local cost history using local app-server priority traces (#917). Thanks @iam-brain!
 - Localization: add Brazilian Portuguese translations (#902). Thanks @ThiagoCAltoe!
@@ -17,6 +19,9 @@
 
 ### Fixed
 - OpenCode Go: let automatic cookie import scan all supported browser sources instead of Chrome only (#665).
+- Copilot: preserve over-quota usage so paid overage can show above 100% instead of clamping to exhausted (#818).
+- Release: include macOS platform and architecture in notarized app and dSYM asset names (#164).
+- Upstream tooling: resolve remote default branches and tolerate missing upstream remotes in review scripts (#906).
 - Codex: pause background CLI launches after macOS blocks or quarantines `codex`, avoiding repeated "Malware Blocked" prompts (#942).
 - Cost history: label local log totals as API-rate estimates in menu cards, charts, and CLI output (#926). Thanks @yashiels!
 - Claude: clarify that local cost/token estimates include cache read/write tokens and may differ from Claude Code `/status` (#781, #787).
