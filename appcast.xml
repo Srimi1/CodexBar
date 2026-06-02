@@ -3,6 +3,22 @@
     <channel>
         <title>CodexBar</title>
         <item>
+            <title>0.32.4</title>
+            <pubDate>Tue, 02 Jun 2026 15:43:46 +0100</pubDate>
+            <link>https://raw.githubusercontent.com/steipete/CodexBar/main/appcast.xml</link>
+            <sparkle:version>79</sparkle:version>
+            <sparkle:shortVersionString>0.32.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>CodexBar 0.32.4</h2>
+<h3>Fixed</h3>
+<ul>
+<li>Menu bar: avoid queuing redundant provider refreshes when opening a fresh merged-menu dropdown, while still retrying missing or stale provider data after menu tracking ends (#1235, #1277). Thanks @hhh2210!</li>
+</ul>
+<p><a href="https://github.com/steipete/CodexBar/blob/main/CHANGELOG.md">View full changelog</a></p>
+]]></description>
+            <enclosure url="https://github.com/steipete/CodexBar/releases/download/v0.32.4/CodexBar-macos-universal-0.32.4.zip" length="45041903" type="application/octet-stream" sparkle:edSignature="UxQW12JvzM4qWOdLoSqPaM9+tOEii1CJEAAGGU4On1F4952QT9ueIXTLTHOdU0MzrHmqs2RmOICx7gL1FZHFBw=="/>
+        </item>
+        <item>
             <title>0.32.3</title>
             <pubDate>Tue, 02 Jun 2026 12:30:56 +0100</pubDate>
             <link>https://raw.githubusercontent.com/steipete/CodexBar/main/appcast.xml</link>
@@ -42,25 +58,6 @@
 <p><a href="https://github.com/steipete/CodexBar/blob/main/CHANGELOG.md">View full changelog</a></p>
 ]]></description>
             <enclosure url="https://github.com/steipete/CodexBar/releases/download/v0.32.2/CodexBar-macos-universal-0.32.2.zip" length="45070301" type="application/octet-stream" sparkle:edSignature="pvj2uObMV/TgTZFYmi6hGfRRZR5gcz/7cV68N3apvRy4CvZSekdF6ip7lZa6ZwDdS2XEy9X+jLt1j8fcuLzNCg=="/>
-        </item>
-        <item>
-            <title>0.32.1</title>
-            <pubDate>Sun, 31 May 2026 19:10:18 +0100</pubDate>
-            <link>https://raw.githubusercontent.com/steipete/CodexBar/main/appcast.xml</link>
-            <sparkle:version>76</sparkle:version>
-            <sparkle:shortVersionString>0.32.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>CodexBar 0.32.1</h2>
-<h3>Fixed</h3>
-<ul>
-<li>Claude: keep Claude CLI-owned OAuth refresh tokens delegated to Claude Code when CLI storage is present, preventing CodexBar from consuming rotating refresh tokens and forcing re-login (#1161, #1239). Thanks @RajvardhanPatil07!</li>
-<li>Menu bar: reuse short-lived Codex account reconciliation snapshots so repeated menu rebuilds do not reread local auth state on every open.</li>
-<li>Menu bar: defer automatic provider refreshes until after AppKit menu tracking ends so opening the dropdown no longer starts work that can freeze focus and keyboard input.</li>
-<li>Menu bar: suppress background keychain and OpenAI dashboard work during startup/menu tracking so the dropdown stays clickable without macOS keychain prompts or WebKit memory spikes.</li>
-</ul>
-<p><a href="https://github.com/steipete/CodexBar/blob/main/CHANGELOG.md">View full changelog</a></p>
-]]></description>
-            <enclosure url="https://github.com/steipete/CodexBar/releases/download/v0.32.1/CodexBar-macos-universal-0.32.1.zip" length="44948463" type="application/octet-stream" sparkle:edSignature="BK/FXuVPVzQn3kOykuPdpyU5AcRZs45z/iSWYx5k3sLuAu2FyFigVQn8ZDA4eXN9KASAvQXkFZJSKfOANI4oDA=="/>
         </item>
         <item>
             <title>0.14.0</title>
