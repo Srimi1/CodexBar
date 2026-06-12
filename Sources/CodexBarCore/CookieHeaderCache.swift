@@ -27,12 +27,27 @@ public enum CookieHeaderCache {
         }
     }
 
+    public struct ClearSummary: Equatable, Sendable {
+        public let clearedCount: Int
+        public let failedCount: Int
+
+        public init(clearedCount: Int, failedCount: Int) {
+            self.clearedCount = clearedCount
+            self.failedCount = failedCount
+        }
+    }
+
     private static let log = CodexBarLog.logger(LogCategories.cookieCache)
     private nonisolated(unsafe) static var legacyBaseURLOverride: URL?
 
     private struct DisplaySnapshot {
         let entry: Entry?
-        let loadedAt: Date
+        let refreshAfter: Date
+    }
+
+    private enum LoadOutcome {
+        case authoritative(Entry?)
+        case temporarilyUnavailable
     }
 
     private static let displayCacheLock = NSLock()
@@ -40,7 +55,18 @@ public enum CookieHeaderCache {
     private nonisolated(unsafe) static var displayGenerations: [KeychainCacheStore.Key: UInt64] = [:]
     private nonisolated(unsafe) static var displayRevalidationsInFlight: Set<KeychainCacheStore.Key> = []
     private nonisolated(unsafe) static var displayStalenessIntervalOverride: TimeInterval?
+    private nonisolated(unsafe) static var displayUnavailableRetryIntervalOverride: TimeInterval?
     private static let displayStalenessInterval: TimeInterval = 30
+    private static let displayUnavailableRetryInterval: TimeInterval = 1
+    #if DEBUG
+    @TaskLocal private static var legacyRemovalFailureOverride = false
+    #endif
+
+    private enum LegacyRemovalResult: Equatable {
+        case removed
+        case missing
+        case failed
+    }
 
     /// Settings rows render the "Cached: …" cookie label inside SwiftUI body evaluations, which
     /// run repeatedly within a single AppKit layout pass. Each `load` pays a synchronous
@@ -52,10 +78,14 @@ public enum CookieHeaderCache {
         let key = self.key(for: provider, scope: scope)
         let (cached, generation) = self.beginDisplayRead(key: key)
         guard let cached else {
-            let entry = self.load(provider: provider, scope: scope)
-            return self.commitDisplaySnapshotIfCurrent(key: key, entry: entry, generation: generation)
+            switch self.loadOutcome(provider: provider, scope: scope) {
+            case let .authoritative(entry):
+                return self.commitDisplaySnapshotIfCurrent(key: key, entry: entry, generation: generation)
+            case .temporarilyUnavailable:
+                return self.commitTemporaryDisplaySnapshotIfCurrent(key: key, generation: generation)
+            }
         }
-        if Date().timeIntervalSince(cached.loadedAt) >= self.currentDisplayStalenessInterval {
+        if Date() >= cached.refreshAfter {
             self.scheduleDisplayRevalidation(provider: provider, scope: scope, key: key, generation: generation)
         }
         return cached.entry
@@ -92,8 +122,12 @@ public enum CookieHeaderCache {
         key: KeychainCacheStore.Key,
         generation: UInt64)
     {
-        let entry = self.load(provider: provider, scope: scope)
-        _ = self.commitDisplaySnapshotIfCurrent(key: key, entry: entry, generation: generation)
+        switch self.loadOutcome(provider: provider, scope: scope) {
+        case let .authoritative(entry):
+            _ = self.commitDisplaySnapshotIfCurrent(key: key, entry: entry, generation: generation)
+        case .temporarilyUnavailable:
+            self.deferDisplayRetryIfCurrent(key: key, generation: generation)
+        }
         self.displayCacheLock.lock()
         self.displayRevalidationsInFlight.remove(key)
         self.displayCacheLock.unlock()
@@ -113,23 +147,79 @@ public enum CookieHeaderCache {
         guard self.displayGenerations[key, default: 0] == generation else {
             return self.displayCache[key]?.entry
         }
-        self.displayCache[key] = DisplaySnapshot(entry: entry, loadedAt: Date())
+        self.displayCache[key] = self.authoritativeDisplaySnapshot(entry: entry)
         return entry
+    }
+
+    private static func commitTemporaryDisplaySnapshotIfCurrent(
+        key: KeychainCacheStore.Key,
+        generation: UInt64) -> Entry?
+    {
+        self.displayCacheLock.lock()
+        defer { self.displayCacheLock.unlock() }
+        guard self.displayGenerations[key, default: 0] == generation else {
+            return self.displayCache[key]?.entry
+        }
+        if let current = self.displayCache[key] {
+            return current.entry
+        }
+        self.displayCache[key] = self.temporaryDisplaySnapshot(entry: nil)
+        return nil
+    }
+
+    private static func deferDisplayRetryIfCurrent(key: KeychainCacheStore.Key, generation: UInt64) {
+        self.displayCacheLock.lock()
+        defer { self.displayCacheLock.unlock() }
+        guard self.displayGenerations[key, default: 0] == generation,
+              let current = self.displayCache[key]
+        else { return }
+        self.displayCache[key] = self.temporaryDisplaySnapshot(entry: current.entry)
     }
 
     private static func updateDisplaySnapshot(key: KeychainCacheStore.Key, entry: Entry?) {
         self.displayCacheLock.lock()
-        self.displayCache[key] = DisplaySnapshot(entry: entry, loadedAt: Date())
+        self.displayCache[key] = self.authoritativeDisplaySnapshot(entry: entry)
         self.displayGenerations[key, default: 0] += 1
         self.displayCacheLock.unlock()
+    }
+
+    private static func invalidateDisplaySnapshot(key: KeychainCacheStore.Key) {
+        self.displayCacheLock.lock()
+        self.displayCache.removeValue(forKey: key)
+        self.displayGenerations[key, default: 0] += 1
+        self.displayCacheLock.unlock()
+    }
+
+    private static func currentDisplayEntry(key: KeychainCacheStore.Key) -> Entry? {
+        self.displayCacheLock.lock()
+        defer { self.displayCacheLock.unlock() }
+        return self.displayCache[key]?.entry
+    }
+
+    private static func authoritativeDisplaySnapshot(entry: Entry?) -> DisplaySnapshot {
+        DisplaySnapshot(entry: entry, refreshAfter: Date().addingTimeInterval(self.currentDisplayStalenessInterval))
+    }
+
+    private static func temporaryDisplaySnapshot(entry: Entry?) -> DisplaySnapshot {
+        DisplaySnapshot(
+            entry: entry,
+            refreshAfter: Date().addingTimeInterval(self.currentDisplayUnavailableRetryInterval))
     }
 
     private static var currentDisplayStalenessInterval: TimeInterval {
         self.displayStalenessIntervalOverride ?? self.displayStalenessInterval
     }
 
+    private static var currentDisplayUnavailableRetryInterval: TimeInterval {
+        self.displayUnavailableRetryIntervalOverride ?? self.displayUnavailableRetryInterval
+    }
+
     static func setDisplayStalenessIntervalOverrideForTesting(_ interval: TimeInterval?) {
         self.displayStalenessIntervalOverride = interval
+    }
+
+    static func setDisplayUnavailableRetryIntervalOverrideForTesting(_ interval: TimeInterval?) {
+        self.displayUnavailableRetryIntervalOverride = interval
     }
 
     static func resetDisplayCacheForTesting() {
@@ -143,6 +233,18 @@ public enum CookieHeaderCache {
     static func beginDisplayReadGenerationForTesting(provider: UsageProvider, scope: Scope? = nil) -> UInt64 {
         self.beginDisplayRead(key: self.key(for: provider, scope: scope)).1
     }
+
+    static func currentDisplayEntryForTesting(provider: UsageProvider, scope: Scope? = nil) -> Entry? {
+        self.currentDisplayEntry(key: self.key(for: provider, scope: scope))
+    }
+
+    #if DEBUG
+    static func withLegacyRemovalFailureForTesting<T>(_ operation: () throws -> T) rethrows -> T {
+        try self.$legacyRemovalFailureOverride.withValue(true) {
+            try operation()
+        }
+    }
+    #endif
 
     @discardableResult
     static func commitDisplaySnapshotIfCurrentForTesting(
@@ -158,14 +260,23 @@ public enum CookieHeaderCache {
     }
 
     public static func load(provider: UsageProvider, scope: Scope? = nil) -> Entry? {
+        switch self.loadOutcome(provider: provider, scope: scope) {
+        case let .authoritative(entry):
+            entry
+        case .temporarilyUnavailable:
+            nil
+        }
+    }
+
+    private static func loadOutcome(provider: UsageProvider, scope: Scope?) -> LoadOutcome {
         let key = self.key(for: provider, scope: scope)
         switch KeychainCacheStore.load(key: key, as: Entry.self) {
         case let .found(entry):
             self.log.debug("Cookie cache hit", metadata: ["provider": provider.rawValue])
-            return entry
+            return .authoritative(entry)
         case .temporarilyUnavailable:
             self.log.debug("Cookie cache temporarily unavailable", metadata: ["provider": provider.rawValue])
-            return nil
+            return .temporarilyUnavailable
         case .invalid:
             self.log.warning("Cookie cache invalid; clearing", metadata: ["provider": provider.rawValue])
             KeychainCacheStore.clear(key: key)
@@ -173,12 +284,14 @@ public enum CookieHeaderCache {
             self.log.debug("Cookie cache miss", metadata: ["provider": provider.rawValue])
         }
 
-        guard scope == nil else { return nil }
-        guard let legacy = self.loadLegacyEntry(for: provider) else { return nil }
-        KeychainCacheStore.store(key: key, entry: legacy)
-        self.removeLegacyEntry(for: provider)
-        self.log.debug("Cookie cache migrated from legacy store", metadata: ["provider": provider.rawValue])
-        return legacy
+        guard scope == nil else { return .authoritative(nil) }
+        guard let legacy = self.loadLegacyEntry(for: provider) else { return .authoritative(nil) }
+        if KeychainCacheStore.storeResult(key: key, entry: legacy) {
+            if self.removeLegacyEntry(for: provider) == .removed {
+                self.log.debug("Cookie cache migrated from legacy store", metadata: ["provider": provider.rawValue])
+            }
+        }
+        return .authoritative(legacy)
     }
 
     public static func store(
@@ -195,75 +308,154 @@ public enum CookieHeaderCache {
         }
         let entry = Entry(cookieHeader: normalized, storedAt: now, sourceLabel: sourceLabel)
         let key = self.key(for: provider, scope: scope)
-        KeychainCacheStore.store(key: key, entry: entry)
+        guard KeychainCacheStore.storeResult(key: key, entry: entry) else { return }
         self.updateDisplaySnapshot(key: key, entry: entry)
         if scope == nil {
-            self.removeLegacyEntry(for: provider)
+            _ = self.removeLegacyEntry(for: provider)
         }
         self.log.debug("Cookie cache stored", metadata: ["provider": provider.rawValue, "source": sourceLabel])
     }
 
     @discardableResult
     public static func clear(provider: UsageProvider, scope: Scope? = nil) -> Int {
+        self.clearDetailed(provider: provider, scope: scope).clearedCount
+    }
+
+    public static func clearDetailed(provider: UsageProvider, scope: Scope? = nil) -> ClearSummary {
         let key = self.key(for: provider, scope: scope)
-        var cleared = KeychainCacheStore.clear(key: key) ? 1 : 0
-        self.updateDisplaySnapshot(key: key, entry: nil)
-        if scope == nil, self.removeLegacyEntry(for: provider) {
+        let result = KeychainCacheStore.clearResult(key: key)
+        var cleared = result == .removed ? 1 : 0
+        var failed = result == .failed ? 1 : 0
+        if result != .failed {
+            self.updateDisplaySnapshot(key: key, entry: nil)
+        }
+        let legacyResult: LegacyRemovalResult = if scope == nil {
+            self.removeLegacyEntry(for: provider)
+        } else {
+            .missing
+        }
+        if legacyResult == .removed {
             cleared += 1
+            if result == .failed {
+                self.invalidateDisplaySnapshot(key: key)
+            }
+        } else if legacyResult == .failed {
+            failed += 1
         }
         self.log.debug("Cookie cache cleared", metadata: ["provider": provider.rawValue])
-        return cleared
+        return ClearSummary(clearedCount: cleared, failedCount: failed)
     }
 
     /// Clears all cookie cache scopes for one provider, including managed Codex account scopes.
-    /// Returns the number of keychain or legacy-file entries removed.
+    /// Returns keychain/legacy removal and failure counts.
     @discardableResult
     public static func clearAllScopes(provider: UsageProvider) -> Int {
-        let keys = self.cookieKeys(for: provider)
+        self.clearAllScopesDetailed(provider: provider).clearedCount
+    }
+
+    public static func clearAllScopesDetailed(provider: UsageProvider) -> ClearSummary {
+        let (keys, enumerationFailed) = self.cookieKeysResult(for: provider)
         var cleared = 0
+        var failedKeys = Set<KeychainCacheStore.Key>()
         for key in keys {
-            if KeychainCacheStore.clear(key: key) {
+            let result = KeychainCacheStore.clearResult(key: key)
+            if result == .removed {
                 cleared += 1
             }
-            self.updateDisplaySnapshot(key: key, entry: nil)
+            if result != .failed {
+                self.updateDisplaySnapshot(key: key, entry: nil)
+            } else {
+                failedKeys.insert(key)
+            }
         }
-        if self.removeLegacyEntry(for: provider) {
+        let legacyResult = self.removeLegacyEntry(for: provider)
+        if legacyResult == .removed {
             cleared += 1
+            let globalKey = self.key(for: provider, scope: nil)
+            if failedKeys.contains(globalKey) {
+                self.invalidateDisplaySnapshot(key: globalKey)
+            }
         }
+        let failedCount = failedKeys.count + (enumerationFailed ? 1 : 0) + (legacyResult == .failed ? 1 : 0)
         self.log.debug("Cookie cache clearAllScopes completed", metadata: [
             "provider": provider.rawValue,
             "cleared": "\(cleared)",
         ])
-        return cleared
+        return ClearSummary(clearedCount: cleared, failedCount: failedCount)
     }
 
     /// Clears cookie caches for all providers, including corrupt/invalid entries.
-    /// Returns the number of keychain or legacy-file entries removed.
+    /// Returns keychain/legacy removal and failure counts.
     @discardableResult
     public static func clearAll() -> Int {
-        var cleared = 0
-        for key in KeychainCacheStore.keys(category: "cookie") where KeychainCacheStore.clear(key: key) {
-            cleared += 1
-        }
-        for provider in UsageProvider.allCases where self.removeLegacyEntry(for: provider) {
-            cleared += 1
-        }
-        self.displayCacheLock.lock()
-        for key in Set(self.displayCache.keys).union(self.displayGenerations.keys) {
-            self.displayGenerations[key, default: 0] += 1
-        }
-        self.displayCache.removeAll()
-        self.displayCacheLock.unlock()
-        self.log.debug("Cookie cache clearAll completed", metadata: ["cleared": "\(cleared)"])
-        return cleared
+        self.clearAllDetailed().clearedCount
     }
 
-    private static func cookieKeys(for provider: UsageProvider) -> [KeychainCacheStore.Key] {
+    public static func clearAllDetailed() -> ClearSummary {
+        self.displayCacheLock.lock()
+        let knownDisplayKeys = Set(self.displayCache.keys).union(self.displayGenerations.keys)
+        self.displayCacheLock.unlock()
+        let enumeratedKeys: [KeychainCacheStore.Key]
+        let enumerationFailed: Bool
+        switch KeychainCacheStore.keysResult(category: "cookie") {
+        case let .found(keys):
+            enumeratedKeys = keys
+            enumerationFailed = false
+        case .temporarilyUnavailable, .failed:
+            enumeratedKeys = []
+            enumerationFailed = true
+        }
+        let keys = Set(enumeratedKeys).union(knownDisplayKeys)
+        var cleared = 0
+        var failedKeys = Set<KeychainCacheStore.Key>()
+        for key in keys {
+            let result = KeychainCacheStore.clearResult(key: key)
+            if result == .removed {
+                cleared += 1
+            }
+            if result != .failed {
+                self.updateDisplaySnapshot(key: key, entry: nil)
+            } else {
+                failedKeys.insert(key)
+            }
+        }
+        var legacyFailures = 0
+        for provider in UsageProvider.allCases {
+            switch self.removeLegacyEntry(for: provider) {
+            case .removed:
+                cleared += 1
+                let globalKey = self.key(for: provider, scope: nil)
+                if failedKeys.contains(globalKey) {
+                    self.invalidateDisplaySnapshot(key: globalKey)
+                }
+            case .failed:
+                legacyFailures += 1
+            case .missing:
+                break
+            }
+        }
+        self.log.debug("Cookie cache clearAll completed", metadata: ["cleared": "\(cleared)"])
+        return ClearSummary(
+            clearedCount: cleared,
+            failedCount: failedKeys.count + (enumerationFailed ? 1 : 0) + legacyFailures)
+    }
+
+    private static func cookieKeysResult(for provider: UsageProvider) -> ([KeychainCacheStore.Key], Bool) {
         let exactIdentifier = provider.rawValue
         let scopedPrefix = "\(provider.rawValue)."
         var seen = Set<KeychainCacheStore.Key>()
         var keys: [KeychainCacheStore.Key] = []
-        for key in KeychainCacheStore.keys(category: "cookie") {
+        let enumeratedKeys: [KeychainCacheStore.Key]
+        let enumerationFailed: Bool
+        switch KeychainCacheStore.keysResult(category: "cookie") {
+        case let .found(keys):
+            enumeratedKeys = keys
+            enumerationFailed = false
+        case .temporarilyUnavailable, .failed:
+            enumeratedKeys = []
+            enumerationFailed = true
+        }
+        for key in enumeratedKeys {
             guard key.identifier == exactIdentifier || key.identifier.hasPrefix(scopedPrefix) else {
                 continue
             }
@@ -275,7 +467,7 @@ public enum CookieHeaderCache {
         if seen.insert(global).inserted {
             keys.append(global)
         }
-        return keys
+        return (keys, enumerationFailed)
     }
 
     static func load(from url: URL) -> Entry? {
@@ -324,18 +516,23 @@ public enum CookieHeaderCache {
         self.hasKeychainEntry(provider: provider, scope: scope)
     }
 
-    @discardableResult
-    private static func removeLegacyEntry(for provider: UsageProvider) -> Bool {
+    private static func removeLegacyEntry(for provider: UsageProvider) -> LegacyRemovalResult {
         let url = self.legacyURL(for: provider)
+        #if DEBUG
+        if self.legacyRemovalFailureOverride {
+            return .failed
+        }
+        #endif
         let existed = FileManager.default.fileExists(atPath: url.path)
         do {
             try FileManager.default.removeItem(at: url)
-            return existed
+            return existed ? .removed : .missing
         } catch {
             if (error as NSError).code != NSFileNoSuchFileError {
                 Self.log.error("Failed to remove cookie cache (\(provider.rawValue)): \(error)")
+                return .failed
             }
-            return false
+            return .missing
         }
     }
 

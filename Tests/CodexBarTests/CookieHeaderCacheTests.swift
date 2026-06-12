@@ -199,9 +199,9 @@ struct CookieHeaderCacheTests {
                 sourceLabel: "Legacy"),
             to: CookieHeaderCache.legacyURLForTesting(provider: provider))
 
-        let cleared = CookieHeaderCache.clearAllScopes(provider: provider)
+        let cleared = CookieHeaderCache.clearAllScopesDetailed(provider: provider)
 
-        #expect(cleared == 4)
+        #expect(cleared == CookieHeaderCache.ClearSummary(clearedCount: 4, failedCount: 0))
         #expect(!CookieHeaderCache.hasKeychainEntryForTesting(provider: provider))
         #expect(!CookieHeaderCache.hasKeychainEntryForTesting(provider: provider, scope: .managedAccount(accountID)))
         #expect(!CookieHeaderCache.hasKeychainEntryForTesting(provider: provider, scope: .managedStoreUnreadable))
@@ -245,6 +245,155 @@ struct CookieHeaderCacheTests {
                 sourceLabel: "Chrome"))
         #expect(CookieHeaderCache.loadForDisplay(provider: provider) == nil)
     }
+
+    #if os(macOS)
+    @Test
+    func `loadForDisplay throttles temporary keychain unavailability then retries`() async throws {
+        KeychainCacheStore.setTestStoreForTesting(true)
+        defer { KeychainCacheStore.setTestStoreForTesting(false) }
+        CookieHeaderCache.resetDisplayCacheForTesting()
+        defer { CookieHeaderCache.resetDisplayCacheForTesting() }
+        CookieHeaderCache.setDisplayUnavailableRetryIntervalOverrideForTesting(0.05)
+        defer { CookieHeaderCache.setDisplayUnavailableRetryIntervalOverrideForTesting(nil) }
+
+        let provider: UsageProvider = .codex
+        KeychainCacheStore.store(
+            key: .cookie(provider: provider),
+            entry: CookieHeaderCache.Entry(
+                cookieHeader: "auth=available-after-retry",
+                storedAt: Date(timeIntervalSince1970: 0),
+                sourceLabel: "Chrome"))
+
+        let unavailable = KeychainCacheStore.withLoadFailureStatusOverrideForTesting(errSecInteractionNotAllowed) {
+            CookieHeaderCache.loadForDisplay(provider: provider)
+        }
+
+        #expect(unavailable == nil)
+        #expect(CookieHeaderCache.loadForDisplay(provider: provider) == nil)
+
+        try await Task.sleep(for: .milliseconds(60))
+        var retried: CookieHeaderCache.Entry?
+        for _ in 0..<100 {
+            retried = CookieHeaderCache.loadForDisplay(provider: provider)
+            if retried != nil { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(retried?.cookieHeader == "auth=available-after-retry")
+    }
+
+    @Test
+    func `temporary first display read returns a concurrent store`() {
+        KeychainCacheStore.setTestStoreForTesting(true)
+        defer { KeychainCacheStore.setTestStoreForTesting(false) }
+        CookieHeaderCache.resetDisplayCacheForTesting()
+        defer { CookieHeaderCache.resetDisplayCacheForTesting() }
+
+        let provider: UsageProvider = .codex
+        _ = CookieHeaderCache.beginDisplayReadGenerationForTesting(provider: provider)
+        CookieHeaderCache.store(provider: provider, cookieHeader: "auth=concurrent", sourceLabel: "Chrome")
+
+        #expect(CookieHeaderCache.currentDisplayEntryForTesting(provider: provider)?
+            .cookieHeader == "auth=concurrent")
+    }
+
+    @Test
+    func `failed keychain mutations preserve the display snapshot`() {
+        KeychainCacheStore.setTestStoreForTesting(true)
+        defer { KeychainCacheStore.setTestStoreForTesting(false) }
+        CookieHeaderCache.resetDisplayCacheForTesting()
+        defer { CookieHeaderCache.resetDisplayCacheForTesting() }
+
+        let provider: UsageProvider = .codex
+        CookieHeaderCache.store(provider: provider, cookieHeader: "auth=old", sourceLabel: "Chrome")
+        #expect(CookieHeaderCache.loadForDisplay(provider: provider)?.cookieHeader == "auth=old")
+
+        KeychainCacheStore.withStoreFailureStatusOverrideForTesting(errSecInteractionNotAllowed) {
+            CookieHeaderCache.store(provider: provider, cookieHeader: "auth=new", sourceLabel: "Safari")
+        }
+        #expect(CookieHeaderCache.loadForDisplay(provider: provider)?.cookieHeader == "auth=old")
+
+        let cleared = KeychainCacheStore.withClearFailureStatusOverrideForTesting(errSecInteractionNotAllowed) {
+            CookieHeaderCache.clearDetailed(provider: provider)
+        }
+        #expect(cleared == CookieHeaderCache.ClearSummary(clearedCount: 0, failedCount: 1))
+        #expect(CookieHeaderCache.loadForDisplay(provider: provider)?.cookieHeader == "auth=old")
+        #expect(CookieHeaderCache.load(provider: provider)?.cookieHeader == "auth=old")
+    }
+
+    @Test
+    func `legacy removal invalidates a snapshot after failed keychain clear`() {
+        KeychainCacheStore.setTestStoreForTesting(true)
+        defer { KeychainCacheStore.setTestStoreForTesting(false) }
+        CookieHeaderCache.resetDisplayCacheForTesting()
+        defer { CookieHeaderCache.resetDisplayCacheForTesting() }
+
+        KeychainCacheStore.withServiceOverrideForTesting("legacy-clear-\(UUID().uuidString)") {
+            let legacyBase = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            CookieHeaderCache.setLegacyBaseURLOverrideForTesting(legacyBase)
+            defer { CookieHeaderCache.setLegacyBaseURLOverrideForTesting(nil) }
+
+            let provider: UsageProvider = .codex
+            CookieHeaderCache.store(
+                CookieHeaderCache.Entry(
+                    cookieHeader: "auth=legacy",
+                    storedAt: Date(timeIntervalSince1970: 0),
+                    sourceLabel: "Legacy"),
+                to: CookieHeaderCache.legacyURLForTesting(provider: provider))
+
+            let displayed = KeychainCacheStore.withStoreFailureStatusOverrideForTesting(errSecInteractionNotAllowed) {
+                CookieHeaderCache.loadForDisplay(provider: provider)
+            }
+            #expect(displayed?.cookieHeader == "auth=legacy")
+
+            let cleared = KeychainCacheStore.withClearFailureStatusOverrideForTesting(errSecInteractionNotAllowed) {
+                CookieHeaderCache.clearDetailed(provider: provider)
+            }
+
+            #expect(cleared == CookieHeaderCache.ClearSummary(clearedCount: 1, failedCount: 1))
+            #expect(!CookieHeaderCache.hasLegacyEntryForTesting(provider: provider))
+            #expect(CookieHeaderCache.loadForDisplay(provider: provider) == nil)
+        }
+    }
+
+    @Test
+    func `clear all reports keychain enumeration failure`() {
+        KeychainCacheStore.setTestStoreForTesting(true)
+        defer { KeychainCacheStore.setTestStoreForTesting(false) }
+
+        let summary = KeychainCacheStore.withKeysFailureStatusOverrideForTesting(errSecInteractionNotAllowed) {
+            CookieHeaderCache.clearAllDetailed()
+        }
+
+        #expect(summary.failedCount >= 1)
+    }
+
+    @Test
+    func `clear reports legacy file deletion failure`() {
+        KeychainCacheStore.setTestStoreForTesting(true)
+        defer { KeychainCacheStore.setTestStoreForTesting(false) }
+
+        let legacyBase = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        CookieHeaderCache.setLegacyBaseURLOverrideForTesting(legacyBase)
+        defer { CookieHeaderCache.setLegacyBaseURLOverrideForTesting(nil) }
+
+        let provider: UsageProvider = .codex
+        CookieHeaderCache.store(
+            CookieHeaderCache.Entry(
+                cookieHeader: "auth=legacy",
+                storedAt: Date(timeIntervalSince1970: 0),
+                sourceLabel: "Legacy"),
+            to: CookieHeaderCache.legacyURLForTesting(provider: provider))
+
+        let summary = CookieHeaderCache.withLegacyRemovalFailureForTesting {
+            CookieHeaderCache.clearDetailed(provider: provider)
+        }
+
+        #expect(summary.failedCount == 1)
+        #expect(CookieHeaderCache.hasLegacyEntryForTesting(provider: provider))
+    }
+    #endif
 
     @Test
     func `store and clear update the display snapshot immediately`() {
@@ -419,9 +568,10 @@ struct CookieHeaderCacheTests {
                 key: .cookie(provider: .cursor),
                 entry: WrongEntry(value: "invalid"))
 
-            let cleared = CookieHeaderCache.clearAll()
+            let cleared = CookieHeaderCache.clearAllDetailed()
 
-            #expect(cleared >= 3)
+            #expect(cleared.clearedCount >= 3)
+            #expect(cleared.failedCount == 0)
             #expect(KeychainCacheStore.keys(category: "cookie").isEmpty)
         }
     }
