@@ -108,6 +108,23 @@ struct TokenAccountEnvironmentPrecedenceTests {
     }
 
     @Test
+    func `command code config cookie is carried into CLI settings snapshot`() throws {
+        let config = CodexBarConfig(providers: [
+            ProviderConfig(
+                id: .commandcode,
+                cookieHeader: "better-auth.session_token=manual-token",
+                cookieSource: .manual),
+        ])
+        let selection = TokenAccountCLISelection(label: nil, index: nil, allAccounts: false)
+        let tokenContext = try TokenAccountCLIContext(selection: selection, config: config, verbose: false)
+        let snapshot = try #require(tokenContext.settingsSnapshot(for: .commandcode, account: nil))
+        let commandCodeSettings = try #require(snapshot.commandcode)
+
+        #expect(commandCodeSettings.cookieSource == .manual)
+        #expect(commandCodeSettings.manualCookieHeader == "better-auth.session_token=manual-token")
+    }
+
+    @Test
     func `app snapshot override resolves cookie account without mutating stored selection`() throws {
         let settings = Self.makeSettingsStore(suite: "TokenAccountEnvironmentPrecedenceTests-cookie-override-app")
         settings.cursorCookieSource = .auto

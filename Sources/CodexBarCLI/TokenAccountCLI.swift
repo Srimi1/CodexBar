@@ -162,6 +162,8 @@ struct TokenAccountCLIContext {
                     cookieSource: cookieSettings.cookieSource,
                     manualCookieHeader: cookieSettings.manualCookieHeader,
                     workspaceID: config?.workspaceID))
+        case .commandcode:
+            return self.makeSnapshot(commandcode: self.makeProviderCookieSettings(cookieSettings))
         case .alibaba:
             return self.makeSnapshot(
                 alibaba: ProviderSettingsSnapshot.AlibabaCodingPlanProviderSettings(
@@ -232,6 +234,7 @@ struct TokenAccountCLIContext {
         kimi: ProviderSettingsSnapshot.KimiProviderSettings? = nil,
         augment: ProviderSettingsSnapshot.AugmentProviderSettings? = nil,
         amp: ProviderSettingsSnapshot.AmpProviderSettings? = nil,
+        commandcode: ProviderSettingsSnapshot.CommandCodeProviderSettings? = nil,
         ollama: ProviderSettingsSnapshot.OllamaProviderSettings? = nil,
         jetbrains: ProviderSettingsSnapshot.JetBrainsProviderSettings? = nil,
         perplexity: ProviderSettingsSnapshot.PerplexityProviderSettings? = nil,
@@ -257,6 +260,7 @@ struct TokenAccountCLIContext {
             augment: augment,
             moonshot: moonshot,
             amp: amp,
+            commandcode: commandcode,
             ollama: ollama,
             jetbrains: jetbrains,
             perplexity: perplexity,

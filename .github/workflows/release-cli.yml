@@ -249,12 +249,16 @@ jobs:
             exit 1
           fi
 
+          sqlite_amalgamation="$sqlite_src/sqlite-amalgamation-${SQLITE_AMALGAMATION_VERSION}"
+          mkdir -p "$sysroot/usr/include"
+          install -m 0644 "$sqlite_amalgamation/sqlite3.h" "$sysroot/usr/include/sqlite3.h"
+
           clang \
             -target "${{ matrix.swift-sdk-triple }}" \
             --sysroot="$sysroot" \
             -O2 \
             -DSQLITE_OMIT_LOAD_EXTENSION=1 \
-            -c "$sqlite_src/sqlite-amalgamation-${SQLITE_AMALGAMATION_VERSION}/sqlite3.c" \
+            -c "$sqlite_amalgamation/sqlite3.c" \
             -o "$sqlite_out/build/sqlite3.o"
           llvm-ar crs "$sqlite_out/lib/libsqlite3.a" "$sqlite_out/build/sqlite3.o"
 

@@ -29,7 +29,7 @@ headers, source selection, provider ordering, and token accounts are stored in `
 | Antigravity | Local LSP/HTTP probe (`local`). |
 | Cursor | Web API via cookies → stored WebKit session (`web`). |
 | OpenCode | Web dashboard via cookies (`web`). |
-| OpenCode Go | Web dashboard via cookies (`web`); optional workspace ID. |
+| OpenCode Go | Web dashboard via cookies (`web`) -> local SQLite usage (`local`) in auto mode; optional workspace ID. |
 | Alibaba Coding Plan | Console RPC via web cookies (auto/manual) with API key fallback (`web`, `api`). |
 | Alibaba Token Plan | Bailian subscription summary API via browser or manual cookies (`web`). |
 | Droid/Factory | Web cookies → stored tokens → local storage → WorkOS cookies (`web`). |
@@ -177,7 +177,8 @@ headers, source selection, provider ordering, and token accounts are stored in `
 - Details: `docs/opencode.md`.
 
 ## OpenCode Go
-- Web dashboard via browser cookies (`opencode.ai`).
+- Web dashboard via browser or manual cookies (`opencode.ai`).
+- Auto mode falls back to local usage from `~/.local/share/opencode/opencode.db` on macOS and Linux.
 - Uses the workspace Go page/server data for rolling 5-hour, weekly, and optional monthly usage windows.
 - Optional workspace ID comes from `~/.codexbar/config.json` (`providers[].workspaceID`) or `CODEXBAR_OPENCODEGO_WORKSPACE_ID`.
 - Status: none yet.
@@ -366,6 +367,7 @@ headers, source selection, provider ordering, and token accounts are stored in `
 
 ## Command Code
 - Browser session cookies from automatic import or manual `Cookie:` header.
+- Linux CLI supports configured manual cookies; automatic browser import remains macOS-only.
 - Reads monthly USD credits and billing-cycle usage from `api.commandcode.ai`.
 - Automatic import looks for better-auth session cookies from `commandcode.ai` / `www.commandcode.ai`.
 - Status: none yet.

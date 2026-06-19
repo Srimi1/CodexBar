@@ -33,6 +33,7 @@
 ### Fixed
 - Cost history: keep chart date labels aligned with their bars and visible without clipping. Thanks @elijahfriedman!
 - Claude settings: dim and disable Avoid Keychain prompts while global Keychain access is disabled. Thanks @Zihao-Qi!
+- Linux CLI: read OpenCode Go local SQLite usage in automatic mode and allow Command Code billing with a configured manual cookie.
 - Xiaomi MiMo: retry another imported browser session when a stale session redirects API requests to login. Thanks @Yuxin-Qiao!
 - MiniMax: retry the China API region when the global token endpoint reports a structured invalid-key response.
 - Kiro: keep parsed usage available when the optional account probe times out or fails. Thanks @Yuxin-Qiao!
