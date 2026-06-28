@@ -135,6 +135,12 @@ public enum ProviderTokenResolver {
         self.poeResolution(environment: environment)?.token
     }
 
+    public static func sakanaToken(
+        environment: [String: String] = ProcessInfo.processInfo.environment) -> String?
+    {
+        self.sakanaResolution(environment: environment)?.token
+    }
+
     public static func crofToken(
         environment: [String: String] = ProcessInfo.processInfo.environment) -> String?
     {
@@ -185,6 +191,12 @@ public enum ProviderTokenResolver {
         environment: [String: String] = ProcessInfo.processInfo.environment) -> ProviderTokenResolution?
     {
         self.resolveEnv(PoeSettingsReader.apiKey(environment: environment))
+    }
+
+    public static func sakanaResolution(
+        environment: [String: String] = ProcessInfo.processInfo.environment) -> ProviderTokenResolution?
+    {
+        self.resolveEnv(SakanaSettingsReader.apiKey(environment: environment))
     }
 
     public static func crofResolution(

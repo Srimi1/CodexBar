@@ -8,7 +8,7 @@ read_when:
 
 # Providers
 
-CodexBar currently registers 53 provider IDs. Some companies expose multiple surfaces, such as Codex vs OpenAI API or
+CodexBar currently registers 54 provider IDs. Some companies expose multiple surfaces, such as Codex vs OpenAI API or
 OpenCode vs OpenCode Go, because the auth source and quota shape differ.
 
 ## Fetch strategies (current)
@@ -35,6 +35,7 @@ headers, source selection, provider ordering, and token accounts are stored in `
 | Droid/Factory | Web cookies → stored tokens → local storage → WorkOS cookies (`web`). |
 | Devin | Chrome localStorage session or manual Bearer token → daily and weekly quota API (`web`). |
 | z.ai | API token from config/env → quota API (`api`). |
+| Sakana AI | Console quota via Sakana browser cookies (`web`) → API-key model validation fallback (`api`). |
 | Manus | Browser `session_id` cookie (auto/manual/env) → credits API (`web`). |
 | MiniMax | Manual/browser session via Coding Plan web path (`web`), or Coding Plan API token (`api`). |
 | Kimi | Kimi Code API key (`api`), then `kimi-auth` cookie/manual token/env fallback (`web`). |
@@ -113,6 +114,15 @@ headers, source selection, provider ordering, and token accounts are stored in `
   quota resolution; combined usage validates both configured endpoints before sending bearer auth.
 - Status: none yet.
 - Details: `docs/zai.md`.
+
+## Sakana AI
+- API key from `~/.codexbar/config.json` (`providers[].apiKey`) or `SAKANA_API_KEY`.
+- Console quota from browser cookies, manual `cookieHeader`, or `SAKANA_SESSION_COOKIE`.
+- Auto mode tries logged-in console quota first and falls back to API-key validation.
+- API mode validates `fugu` and `fugu-ultra` through `GET /v1/models`; it does not make generation calls.
+- Shows plan-level 5-hour and weekly quota windows when the Sakana console exposes them.
+- Status: none yet.
+- Details: `docs/sakana.md`.
 
 ## Devin
 - Automatic auth reads the current `auth1_session` token and organization metadata from Chrome localStorage.

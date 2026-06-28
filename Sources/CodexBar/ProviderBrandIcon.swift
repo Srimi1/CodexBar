@@ -37,7 +37,7 @@ enum ProviderBrandIcon {
         }
 
         image.size = self.size
-        image.isTemplate = true
+        image.isTemplate = provider != .sakana
         self.cache[provider] = image
         return image
     }

@@ -9,11 +9,68 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-6e5aff?style=flat-square)](LICENSE)
 [![Site](https://img.shields.io/badge/site-codexbar.app-16d3b4?style=flat-square)](https://codexbar.app)
 
-<a href="https://codexbar.app"><img src="docs/social.png" alt="CodexBar — every AI coding limit in your menu bar. 53 providers." width="100%" /></a>
+<a href="https://codexbar.app"><img src="docs/social.png" alt="CodexBar — every AI coding limit in your menu bar. 54 providers." width="100%" /></a>
 
-Tiny macOS 14+ menu bar app that keeps **AI coding-provider limits visible** and shows when each window resets. Codex, OpenAI, Claude, Cursor, Gemini, Copilot, Grok, GroqCloud, ElevenLabs, Deepgram, z.ai, MiniMax, Kiro, Zed, Vertex AI, Augment, OpenRouter, LiteLLM, LLM Proxy, Codebuff, Command Code, AWS Bedrock, and many newer coding providers. One status item per provider, or Merge Icons mode with a provider switcher. No Dock icon, minimal UI, dynamic bar icons.
+Tiny macOS 14+ menu bar app that keeps **AI coding-provider limits visible** and shows when each window resets. Codex, OpenAI, Claude, Cursor, Gemini, Copilot, Grok, GroqCloud, ElevenLabs, Deepgram, z.ai, Sakana AI, MiniMax, Kiro, Zed, Vertex AI, Augment, OpenRouter, LiteLLM, LLM Proxy, Codebuff, Command Code, AWS Bedrock, and many newer coding providers. One status item per provider, or Merge Icons mode with a provider switcher. No Dock icon, minimal UI, dynamic bar icons.
 
 <img src="codexbar.png" alt="CodexBar menu popover with provider tiles, usage bars, and reset countdowns" width="520" />
+
+## Srimi1 fork: Sakana AI support
+
+This fork adds first-class **Sakana AI** usage tracking to CodexBar while keeping provider secrets out of the repository.
+The Sakana provider validates model access with the public API and reads remaining quota from the authenticated Sakana
+console when browser cookies are available.
+
+<p>
+  <img src="Sources/CodexBar/Resources/ProviderIcon-sakana.svg" alt="Sakana AI logo" width="72" />
+</p>
+
+Highlights:
+
+- Adds provider id `sakana` with display name `Sakana AI`.
+- Validates the configured API key against `https://api.sakana.ai/v1/models`.
+- Confirms Sakana model access for `fugu`, `fugu-ultra`, and compatible newer model ids.
+- Imports Sakana console cookies from Chrome by default, with manual cookie and environment-variable fallbacks.
+- Shows plan-level quota from the Sakana console:
+  - Primary window: `5-hour quota`
+  - Secondary window: `Weekly quota`
+- Uses Sakana's official SVG logo in Settings, provider lists, switchers, and brand-icon menu bar mode.
+- Keeps API keys and cookies treated as secrets; sample config below uses placeholders only.
+
+```mermaid
+flowchart LR
+    A["CodexBar refresh"] --> B{"Sakana source mode"}
+    B -->|auto| C["Try console quota via browser cookies"]
+    B -->|web| C
+    B -->|api| D["Validate API key only"]
+    C --> E{"Authenticated console?"}
+    E -->|yes| F["Parse plan, 5-hour quota, weekly quota"]
+    E -->|no| D
+    D --> G["GET /v1/models"]
+    G --> H{"fugu + fugu-ultra available?"}
+    H -->|yes| I["Show API key valid; console login required for quota"]
+    H -->|no| J["Show actionable provider error"]
+    F --> K["Render Sakana usage in menu bar and Settings"]
+```
+
+Safe local configuration example:
+
+```json
+{
+  "version": 1,
+  "providers": [
+    {
+      "id": "sakana",
+      "enabled": true,
+      "apiKey": "<your-sakana-api-key>",
+      "cookieSource": "auto"
+    }
+  ]
+}
+```
+
+Never commit a real `apiKey`, `cookieHeader`, browser cookie, session token, or local `~/.codexbar/config.json`.
+See [docs/sakana.md](docs/sakana.md) for the full implementation notes and workflows.
 
 ## Why
 
@@ -90,6 +147,7 @@ See [CLI configuration](docs/cli-configuration.md) for the full flow.
 - [Copilot](docs/copilot.md) — GitHub device flow + Copilot internal usage API.
 - [Devin](docs/devin.md) — Chrome localStorage session or manual Bearer token for daily and weekly quotas.
 - [z.ai](docs/zai.md) — API token for personal/team quota, MCP, 5-hour, and hourly usage windows.
+- [Sakana AI](docs/sakana.md) — API key validation plus Sakana console cookies for plan-level 5-hour and weekly quotas.
 - [Manus](docs/manus.md) — Browser `session_id` auth for credit balance, monthly credits, and daily refresh tracking.
 - [MiniMax](docs/minimax.md) — API token, cookie header, or browser cookies for coding-plan usage.
 - [T3 Chat](docs/providers.md#t3-chat) — Browser cookies capture for Base and Overage usage buckets.

@@ -56,6 +56,7 @@ public enum UsageProvider: String, CaseIterable, Sendable, Codable {
     case deepgram
     case poe
     case chutes
+    case sakana
 }
 
 // swiftformat:enable sortDeclarations
@@ -112,6 +113,7 @@ public enum IconStyle: String, Sendable, CaseIterable {
     case deepgram
     case poe
     case chutes
+    case sakana
     case combined
 }
 
@@ -254,6 +256,16 @@ public enum ProviderBrowserCookieDefaults {
 
     /// Copilot budget imports should stay Chrome-only by default to avoid prompting unrelated browsers.
     public static var copilotCookieImportOrder: BrowserCookieImportOrder? {
+        #if os(macOS)
+        [.chrome]
+        #else
+        nil
+        #endif
+    }
+
+    /// Sakana console usage is normally signed in through Chrome. Keep auto import narrow
+    /// so refreshes do not probe unrelated browser keychains.
+    public static var sakanaCookieImportOrder: BrowserCookieImportOrder? {
         #if os(macOS)
         [.chrome]
         #else

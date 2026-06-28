@@ -38,7 +38,8 @@ public struct ProviderSettingsSnapshot: Sendable {
         mimo: MiMoProviderSettings? = nil,
         abacus: AbacusProviderSettings? = nil,
         mistral: MistralProviderSettings? = nil,
-        stepfun: StepFunProviderSettings? = nil) -> ProviderSettingsSnapshot
+        stepfun: StepFunProviderSettings? = nil,
+        sakana: CookieProviderSettings? = nil) -> ProviderSettingsSnapshot
     {
         ProviderSettingsSnapshot(
             debugMenuEnabled: debugMenuEnabled,
@@ -70,7 +71,8 @@ public struct ProviderSettingsSnapshot: Sendable {
             mimo: mimo,
             abacus: abacus,
             mistral: mistral,
-            stepfun: stepfun)
+            stepfun: stepfun,
+            sakana: sakana)
     }
 
     public struct CodexProviderSettings: Sendable {
@@ -464,6 +466,7 @@ public struct ProviderSettingsSnapshot: Sendable {
     public let abacus: AbacusProviderSettings?
     public let mistral: MistralProviderSettings?
     public let stepfun: StepFunProviderSettings?
+    public let sakana: CookieProviderSettings?
 
     public var jetbrainsIDEBasePath: String? {
         self.jetbrains?.ideBasePath
@@ -499,7 +502,8 @@ public struct ProviderSettingsSnapshot: Sendable {
         mimo: MiMoProviderSettings? = nil,
         abacus: AbacusProviderSettings? = nil,
         mistral: MistralProviderSettings? = nil,
-        stepfun: StepFunProviderSettings? = nil)
+        stepfun: StepFunProviderSettings? = nil,
+        sakana: CookieProviderSettings? = nil)
     {
         self.debugMenuEnabled = debugMenuEnabled
         self.debugKeepCLISessionsAlive = debugKeepCLISessionsAlive
@@ -531,6 +535,7 @@ public struct ProviderSettingsSnapshot: Sendable {
         self.abacus = abacus
         self.mistral = mistral
         self.stepfun = stepfun
+        self.sakana = sakana
     }
 }
 
@@ -563,6 +568,7 @@ public enum ProviderSettingsSnapshotContribution: Sendable {
     case abacus(ProviderSettingsSnapshot.AbacusProviderSettings)
     case mistral(ProviderSettingsSnapshot.MistralProviderSettings)
     case stepfun(ProviderSettingsSnapshot.StepFunProviderSettings)
+    case sakana(ProviderSettingsSnapshot.CookieProviderSettings)
 }
 
 public struct ProviderSettingsSnapshotBuilder: Sendable {
@@ -596,6 +602,7 @@ public struct ProviderSettingsSnapshotBuilder: Sendable {
     public var abacus: ProviderSettingsSnapshot.AbacusProviderSettings?
     public var mistral: ProviderSettingsSnapshot.MistralProviderSettings?
     public var stepfun: ProviderSettingsSnapshot.StepFunProviderSettings?
+    public var sakana: ProviderSettingsSnapshot.CookieProviderSettings?
 
     public init(debugMenuEnabled: Bool = false, debugKeepCLISessionsAlive: Bool = false) {
         self.debugMenuEnabled = debugMenuEnabled
@@ -633,6 +640,7 @@ public struct ProviderSettingsSnapshotBuilder: Sendable {
         case let .abacus(value): self.abacus = value
         case let .mistral(value): self.mistral = value
         case let .stepfun(value): self.stepfun = value
+        case let .sakana(value): self.sakana = value
         }
     }
 
@@ -667,6 +675,7 @@ public struct ProviderSettingsSnapshotBuilder: Sendable {
             mimo: self.mimo,
             abacus: self.abacus,
             mistral: self.mistral,
-            stepfun: self.stepfun)
+            stepfun: self.stepfun,
+            sakana: self.sakana)
     }
 }
