@@ -65,6 +65,51 @@ enum CostUsagePricing {
         let output: Int
     }
 
+    struct MusePricing {
+        let inputCostPerToken: Double
+        let outputCostPerToken: Double
+        let cacheReadInputCostPerToken: Double?
+        let displayLabel: String?
+    }
+
+    private static let muse: [String: MusePricing] = [
+        "muse-spark": MusePricing(
+            inputCostPerToken: 1.25e-6,
+            outputCostPerToken: 4.25e-6,
+            cacheReadInputCostPerToken: 1.25e-7,
+            displayLabel: "Muse Spark"),
+        "muse-spark-1.2": MusePricing(
+            inputCostPerToken: 1.25e-6,
+            outputCostPerToken: 4.25e-6,
+            cacheReadInputCostPerToken: 1.25e-7,
+            displayLabel: "Muse Spark 1.2"),
+        "muse-spark-1.3": MusePricing(
+            inputCostPerToken: 1.25e-6,
+            outputCostPerToken: 4.25e-6,
+            cacheReadInputCostPerToken: 1.25e-7,
+            displayLabel: "Muse Spark 1.3"),
+        "muse-code": MusePricing(
+            inputCostPerToken: 1.25e-6,
+            outputCostPerToken: 4.25e-6,
+            cacheReadInputCostPerToken: 1.25e-7,
+            displayLabel: "Muse Code"),
+        "muse-spark-contributor": MusePricing(
+            inputCostPerToken: 1e-7,
+            outputCostPerToken: 2e-7,
+            cacheReadInputCostPerToken: 1e-8,
+            displayLabel: "Muse Spark (Contributor)"),
+        "muse-spark-1.2-contributor": MusePricing(
+            inputCostPerToken: 1e-7,
+            outputCostPerToken: 2e-7,
+            cacheReadInputCostPerToken: 1e-8,
+            displayLabel: "Muse Spark 1.2 (Contributor)"),
+        "muse-spark-1.3-contributor": MusePricing(
+            inputCostPerToken: 1e-7,
+            outputCostPerToken: 2e-7,
+            cacheReadInputCostPerToken: 1e-8,
+            displayLabel: "Muse Spark 1.3 (Contributor)"),
+    ]
+
     private static let codex: [String: CodexPricing] = [
         "gpt-5": CodexPricing(
             inputCostPerToken: 1.25e-6,
@@ -644,6 +689,66 @@ enum CostUsagePricing {
                 cacheCreationInputCostPerTokenAboveThreshold: pricing.cacheCreationInputCostPerTokenAboveThreshold,
                 cacheReadInputCostPerTokenAboveThreshold: pricing.cacheReadInputCostPerTokenAboveThreshold),
             tokens: tokens)
+    }
+
+    static func normalizeMuseModel(_ raw: String) -> String {
+        var trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if trimmed.hasPrefix("meta/") {
+            trimmed = String(trimmed.dropFirst("meta/".count))
+        } else if trimmed.hasPrefix("meta.") {
+            trimmed = String(trimmed.dropFirst("meta.".count))
+        }
+
+        if self.muse[trimmed] != nil {
+            return trimmed
+        }
+
+        if trimmed == "muse" || trimmed == "spark" {
+            return "muse-spark-1.3"
+        }
+        if trimmed == "spark-1.2" {
+            return "muse-spark-1.2"
+        }
+        if trimmed == "spark-1.3" {
+            return "muse-spark-1.3"
+        }
+
+        if let datedSuffix = trimmed.range(of: #"-\d{4}-\d{2}(-\d{2})?$"#, options: .regularExpression) {
+            let base = String(trimmed[..<datedSuffix.lowerBound])
+            if self.muse[base] != nil {
+                return base
+            }
+        }
+        if trimmed.hasSuffix("-latest") {
+            let base = String(trimmed.dropLast("-latest".count))
+            if self.muse[base] != nil {
+                return base
+            }
+        }
+        return trimmed
+    }
+
+    static func museCostUSD(
+        model: String,
+        inputTokens: Int,
+        cacheReadInputTokens: Int = 0,
+        outputTokens: Int,
+        isContributor: Bool = false) -> Double?
+    {
+        let key = self.normalizeMuseModel(model)
+        let effectiveKey = isContributor && !key.hasSuffix("-contributor")
+            ? "\(key)-contributor"
+            : key
+
+        guard let pricing = self.muse[effectiveKey] ?? self.muse[key] ?? self.muse["muse-spark-1.3"] else {
+            return nil
+        }
+
+        let nonCachedInput = max(0, inputTokens - cacheReadInputTokens)
+        let cacheReadRate = pricing.cacheReadInputCostPerToken ?? pricing.inputCostPerToken
+        return (Double(nonCachedInput) * pricing.inputCostPerToken)
+            + (Double(cacheReadInputTokens) * cacheReadRate)
+            + (Double(max(0, outputTokens)) * pricing.outputCostPerToken)
     }
 
     static func modelsDevCatalog(now: Date = Date(), cacheRoot: URL? = nil) -> ModelsDevCatalog? {

@@ -576,6 +576,53 @@ struct CostUsagePricingTests {
         #expect(cost == expected)
     }
 
+    @Test
+    func `normalizes muse model variants correctly`() {
+        #expect(CostUsagePricing.normalizeMuseModel("muse-spark-1.3") == "muse-spark-1.3")
+        #expect(CostUsagePricing.normalizeMuseModel("meta/muse-spark-1.2") == "muse-spark-1.2")
+        #expect(CostUsagePricing.normalizeMuseModel("muse-spark-2026-03") == "muse-spark")
+        #expect(CostUsagePricing.normalizeMuseModel("muse-code-latest") == "muse-code")
+        #expect(CostUsagePricing.normalizeMuseModel("muse-custom") == "muse-custom")
+    }
+
+    @Test
+    func `muse cost computes standard pricing correctly`() {
+        let cost = CostUsagePricing.museCostUSD(
+            model: "muse-spark-1.3",
+            inputTokens: 1000,
+            cacheReadInputTokens: 100,
+            outputTokens: 50,
+            isContributor: false)
+
+        let expected = (900.0 * 1.25e-6) + (100.0 * 0.125e-6) + (50.0 * 4.25e-6)
+        #expect(abs((cost ?? 0) - expected) < 1e-9)
+    }
+
+    @Test
+    func `muse cost computes contributor pricing correctly`() {
+        let cost = CostUsagePricing.museCostUSD(
+            model: "muse-spark-1.3",
+            inputTokens: 1000,
+            cacheReadInputTokens: 100,
+            outputTokens: 50,
+            isContributor: true)
+
+        let expected = (900.0 * 0.10e-6) + (100.0 * 0.01e-6) + (50.0 * 0.20e-6)
+        #expect(abs((cost ?? 0) - expected) < 1e-9)
+    }
+
+    @Test
+    func `muse cost falls back gracefully for unknown models`() {
+        let cost = CostUsagePricing.museCostUSD(
+            model: "unknown-muse-variant",
+            inputTokens: 1000,
+            cacheReadInputTokens: 0,
+            outputTokens: 100)
+
+        let expected = (1000.0 * 1.25e-6) + (100.0 * 4.25e-6)
+        #expect(abs((cost ?? 0) - expected) < 1e-9)
+    }
+
     private static func seedModelsDevCache(_ json: String) throws -> URL {
         let root = try Self.cacheRoot()
         let catalog = try JSONDecoder().decode(ModelsDevCatalog.self, from: Data(json.utf8))

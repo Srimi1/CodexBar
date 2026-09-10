@@ -57,6 +57,7 @@ public enum UsageProvider: String, CaseIterable, Sendable, Codable {
     case poe
     case chutes
     case sakana
+    case muse
 }
 
 // swiftformat:enable sortDeclarations
@@ -114,6 +115,7 @@ public enum IconStyle: String, Sendable, CaseIterable {
     case poe
     case chutes
     case sakana
+    case muse
     case combined
 }
 

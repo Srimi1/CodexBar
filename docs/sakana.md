@@ -17,10 +17,6 @@ It combines two data sources:
 The API key proves that model access is available. The console session is required for quota remaining, because the
 quota data is rendered in the logged-in console rather than returned by the public model API.
 
-<p>
-  <img src="../Sources/CodexBar/Resources/ProviderIcon-sakana.svg" alt="Sakana AI logo" width="80" />
-</p>
-
 ## What It Shows
 
 CodexBar maps Sakana usage into the same model used by the other providers:

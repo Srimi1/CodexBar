@@ -1010,6 +1010,7 @@ extension UsageStore {
                 .deepgram: "Deepgram debug log not yet implemented",
                 .chutes: "Chutes debug log not yet implemented",
                 .sakana: "Sakana AI debug log not yet implemented",
+                .muse: "Muse debug log not yet implemented",
             ]
             let buildText = {
                 switch provider {
@@ -1087,7 +1088,7 @@ extension UsageStore {
                 case .gemini, .antigravity, .opencode, .opencodego, .alibabatokenplan, .factory, .copilot, .devin,
                      .vertexai, .kilo, .kiro, .kimi, .kimik2, .moonshot, .jetbrains, .perplexity, .mimo, .doubao,
                      .abacus, .mistral, .codebuff, .crof, .windsurf, .venice, .manus, .commandcode, .stepfun, .bedrock,
-                     .grok, .groq, .t3chat, .llmproxy, .litellm, .zed, .deepgram, .poe, .chutes, .sakana:
+                     .grok, .groq, .t3chat, .llmproxy, .litellm, .zed, .deepgram, .poe, .chutes, .sakana, .muse:
                     return unimplementedDebugLogMessages[provider] ?? "Debug log not yet implemented"
                 }
             }

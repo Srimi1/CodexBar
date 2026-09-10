@@ -107,6 +107,7 @@ public enum ProviderDescriptorRegistry {
         .poe: PoeProviderDescriptor.descriptor,
         .chutes: ChutesProviderDescriptor.descriptor,
         .sakana: SakanaProviderDescriptor.descriptor,
+        .muse: MuseProviderDescriptor.descriptor,
     ]
     private static let bootstrap: Void = {
         for provider in UsageProvider.allCases {

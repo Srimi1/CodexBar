@@ -74,6 +74,7 @@ headers, source selection, provider ordering, and token accounts are stored in `
 | Deepgram | API key → project discovery and usage breakdown API (`api`). |
 | Chutes | API key from config/env → subscription usage and quota API (`api`). |
 | Zed | Zed editor Keychain session → `cloud.zed.dev/client/users/me` for plan and quota data (`local`). |
+| Meta Muse | Local session log scanner + CLI probe (`local`). |
 
 ## Codex
 - App Auto: OAuth API first; falls back to CLI only when OAuth credentials are missing or auth/refresh is invalid.
@@ -444,5 +445,10 @@ headers, source selection, provider ordering, and token accounts are stored in `
 - Shows subscription plan name when the Step Plan status API returns one.
 - Status: none yet.
 - Details: `docs/stepfun.md`.
+
+## Meta Muse
+- Scans `~/.config/muse/sessions` and `~/.muse/sessions` for local token cost and usage tracking.
+- Reads account tier and configuration from `~/.config/muse/settings.json` or `META_API_KEY` / `MUSE_API_KEY`.
+- Details: `docs/muse.md`.
 
 See also: `docs/provider.md` for architecture notes.

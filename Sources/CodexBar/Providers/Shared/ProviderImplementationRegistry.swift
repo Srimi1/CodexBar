@@ -67,6 +67,7 @@ enum ProviderImplementationRegistry {
         case .poe: PoeProviderImplementation()
         case .chutes: ChutesProviderImplementation()
         case .sakana: SakanaProviderImplementation()
+        case .muse: MuseProviderImplementation()
         }
     }
 

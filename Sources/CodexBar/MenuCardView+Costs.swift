@@ -153,6 +153,8 @@ extension UsageMenuCardView.Model {
             L("Reported by OpenAI Admin API organization usage.")
         case .mistral:
             L("Reported by Mistral billing usage.")
+        case .muse:
+            L("Estimated from local Muse session logs.")
         default:
             nil
         }

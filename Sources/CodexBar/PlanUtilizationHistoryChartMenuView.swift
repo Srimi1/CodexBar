@@ -247,7 +247,7 @@ struct PlanUtilizationHistoryChartMenuView: View {
 
         var names: Set<PlanUtilizationSeriesName> = []
         switch provider {
-        case .codex:
+        case .codex, .muse:
             if snapshot.primary != nil { names.insert(.session) }
             if snapshot.secondary != nil { names.insert(.weekly) }
         case .claude:

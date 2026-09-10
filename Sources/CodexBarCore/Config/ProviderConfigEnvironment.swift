@@ -138,7 +138,7 @@ public enum ProviderConfigEnvironment {
             GroqSettingsReader.apiKeyEnvironmentKey
         case .llmproxy:
             LLMProxySettingsReader.apiKeyEnvironmentKey
-        case .chutes, .poe, .litellm, .sakana:
+        case .chutes, .poe, .litellm, .sakana, .muse:
             self.additionalAPIKeyEnvironmentKey(for: provider)
         default:
             nil
@@ -155,6 +155,8 @@ public enum ProviderConfigEnvironment {
             LiteLLMSettingsReader.apiKeyEnvironmentKey
         case .sakana:
             SakanaSettingsReader.apiKeyEnvironmentKey
+        case .muse:
+            MuseSettingsReader.apiKeyEnvironmentKey
         default:
             nil
         }

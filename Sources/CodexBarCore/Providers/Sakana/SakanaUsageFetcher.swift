@@ -14,7 +14,8 @@ public enum SakanaUsageError: LocalizedError, Sendable, Equatable {
     public var errorDescription: String? {
         switch self {
         case .missingCredentials:
-            "Missing Sakana API key or console cookie. Set apiKey/cookieHeader in ~/.codexbar/config.json, or SAKANA_API_KEY/SAKANA_SESSION_COOKIE."
+            "Missing Sakana API key or console cookie. Set apiKey/cookieHeader in ~/.codexbar/config.json, " +
+                "or SAKANA_API_KEY/SAKANA_SESSION_COOKIE."
         case let .invalidCredentials(message):
             "Sakana credentials were rejected. \(message)"
         case .invalidURL:
@@ -182,7 +183,7 @@ public enum SakanaUsageFetcher {
     }
 
     static func parseConsoleQuota(data: Data, now: Date = Date()) throws -> SakanaConsoleQuotaSnapshot {
-        let html = String(decoding: data, as: UTF8.self)
+        let html = String(bytes: data, encoding: .utf8) ?? ""
         guard !self.looksLikeLoginPage(html) else {
             throw SakanaUsageError.invalidCredentials("Sakana console login is required.")
         }

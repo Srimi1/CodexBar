@@ -170,7 +170,7 @@ for ARCH in "${ARCH_LIST[@]}"; do
 done
 
 APP_FINAL="$ROOT/CodexBar.app"
-APP_STAGE="$ROOT/.build/package/CodexBar.app"
+APP_STAGE="/tmp/codexbar-build/CodexBar.app"
 rm -rf "$APP_STAGE"
 APP="$APP_STAGE"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
@@ -439,6 +439,8 @@ chmod -R a+rX "$APP/Contents/Frameworks/Sparkle.framework"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/CodexBar"
 # Re-sign Sparkle and all nested components with Developer ID + timestamp
 SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
+xattr -cr "$SPARKLE"
+find "$SPARKLE" -name '._*' -delete
 if [[ "$SIGNING_MODE" == "adhoc" ]]; then
   CODESIGN_ID="-"
   CODESIGN_ARGS=(--force --sign "$CODESIGN_ID")

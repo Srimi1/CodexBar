@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.38.0 — 2026-09-10
+
+### Added
+- Meta Muse: add complete Meta Muse (Muse Code) provider support with rate limits, local session and token cost scanner, model pricing catalog, and status probe.
+- Muse Costs: track Today and 30-day token usage and USD cost estimates from local JSON and JSONL session files.
+- UI: Meta Muse status bar icon, menu card with cost footer, history chart support, and switcher integration.
+- CLI: support `codexbar usage --provider muse` and `codexbar cost --provider muse`.
+
 ## 0.37.3 — 2026-06-26
 
 ### Added

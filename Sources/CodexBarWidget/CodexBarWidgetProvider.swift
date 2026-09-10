@@ -108,6 +108,7 @@ enum ProviderChoice: String, AppEnum {
         case .chutes: return nil // Chutes not yet supported in widgets
         case .sakana: return nil // Sakana AI not yet supported in widgets
         case .zed: return nil // Zed not yet supported in widgets
+        case .muse: return nil // Muse not yet supported in widgets
         }
     }
 }

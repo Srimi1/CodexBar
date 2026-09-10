@@ -102,7 +102,9 @@ public struct CostUsageFetcher: Sendable {
         piScannerOptions overridePiScannerOptions: PiSessionCostScanner
             .Options? = nil) async throws -> CostUsageTokenSnapshot
     {
-        guard provider == .codex || provider == .claude || provider == .vertexai || provider == .bedrock else {
+        guard provider == .codex || provider == .claude || provider == .vertexai || provider == .bedrock || provider ==
+            .muse
+        else {
             throw CostUsageError.unsupportedProvider(provider)
         }
 
