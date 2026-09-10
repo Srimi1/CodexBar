@@ -963,6 +963,14 @@ extension StatusItemController {
                         self.settings.mergedMenuLastSelectedWasOverview = false
                         self.selectedMenuProvider = selectedProvider
                         provider = selectedProvider
+                        if ProviderDescriptorRegistry.descriptor(for: selectedProvider).tokenCost.supportsTokenCost,
+                           self.store.tokenSnapshot(for: selectedProvider) == nil,
+                           self.settings.isCostUsageEffectivelyEnabled(for: selectedProvider)
+                        {
+                            Task { [weak self] in
+                                await self?.store.refreshTokenUsageNow(for: selectedProvider, force: false)
+                            }
+                        }
                     }
                     switch selection {
                     case .overview:

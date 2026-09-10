@@ -16,31 +16,37 @@ extension UsageStore {
 
     func hydrateCachedTokenSnapshots(now: Date = Date()) {
         guard self.settings.costUsageEnabled else { return }
-        guard self.settings.enabledProvidersOrdered(metadataByProvider: self.providerMetadata).contains(.codex) else {
-            return
+        let enabled = self.settings.enabledProvidersOrdered(metadataByProvider: self.providerMetadata)
+        if enabled.contains(.codex) {
+            let scope = self.tokenCostScope(for: .codex)
+            let historyDays = self.settings.costUsageHistoryDays
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                guard self.tokenSnapshots[.codex] == nil else { return }
+                guard let snapshot = await self.costUsageFetcher.loadCachedCodexTokenSnapshot(
+                    now: now,
+                    codexHomePath: scope.codexHomePath,
+                    historyDays: historyDays)
+                else {
+                    return
+                }
+                guard self.settings.costUsageEnabled,
+                      self.isEnabled(.codex),
+                      self.tokenCostScope(for: .codex).signature == scope.signature,
+                      self.tokenSnapshots[.codex] == nil
+                else {
+                    return
+                }
+                self.tokenSnapshots[.codex] = snapshot
+                self.tokenErrors[.codex] = nil
+            }
         }
-
-        let scope = self.tokenCostScope(for: .codex)
-        let historyDays = self.settings.costUsageHistoryDays
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            guard self.tokenSnapshots[.codex] == nil else { return }
-            guard let snapshot = await self.costUsageFetcher.loadCachedCodexTokenSnapshot(
-                now: now,
-                codexHomePath: scope.codexHomePath,
-                historyDays: historyDays)
-            else {
-                return
+        if enabled.contains(.muse) {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                guard self.tokenSnapshots[.muse] == nil else { return }
+                await self.refreshTokenUsageNow(for: .muse, force: false)
             }
-            guard self.settings.costUsageEnabled,
-                  self.isEnabled(.codex),
-                  self.tokenCostScope(for: .codex).signature == scope.signature,
-                  self.tokenSnapshots[.codex] == nil
-            else {
-                return
-            }
-            self.tokenSnapshots[.codex] = snapshot
-            self.tokenErrors[.codex] = nil
         }
     }
 
@@ -119,6 +125,7 @@ extension UsageStore {
         self.lastTokenFetchScope.removeAll()
         self.tokenFailureGates[.codex]?.reset()
         self.tokenFailureGates[.claude]?.reset()
+        self.tokenFailureGates[.muse]?.reset()
         return nil
     }
 

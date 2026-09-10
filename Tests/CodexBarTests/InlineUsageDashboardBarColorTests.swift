@@ -78,11 +78,15 @@ struct InlineUsageDashboardBarColorTests {
 
         let codex = try makeModel(provider: .codex)
         let claude = try makeModel(provider: .claude)
+        let muse = try makeModel(provider: .muse)
 
         #expect(codex.inlineUsageDashboard?.barColor
             == UsageMenuCardView.Model.inlineDashboardBarColor(for: .codex))
         #expect(claude.inlineUsageDashboard?.barColor
             == UsageMenuCardView.Model.inlineDashboardBarColor(for: .claude))
+        #expect(muse.inlineUsageDashboard?.barColor
+            == UsageMenuCardView.Model.inlineDashboardBarColor(for: .muse))
         #expect(codex.inlineUsageDashboard?.barColor != claude.inlineUsageDashboard?.barColor)
+        #expect(muse.inlineUsageDashboard?.barColor != codex.inlineUsageDashboard?.barColor)
     }
 }
