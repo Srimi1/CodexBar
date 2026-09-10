@@ -11,9 +11,27 @@
 
 <a href="https://codexbar.app"><img src="docs/social.png" alt="CodexBar — every AI coding limit in your menu bar. 54 providers." width="100%" /></a>
 
-Tiny macOS 14+ menu bar app that keeps **AI coding-provider limits visible** and shows when each window resets. Codex, OpenAI, Claude, Cursor, Gemini, Copilot, Grok, GroqCloud, ElevenLabs, Deepgram, z.ai, Sakana AI, MiniMax, Kiro, Zed, Vertex AI, Augment, OpenRouter, LiteLLM, LLM Proxy, Codebuff, Command Code, AWS Bedrock, and many newer coding providers. One status item per provider, or Merge Icons mode with a provider switcher. No Dock icon, minimal UI, dynamic bar icons.
+Tiny macOS 14+ menu bar app that keeps **AI coding-provider limits visible** and shows when each window resets. Codex, OpenAI, Claude, Meta Muse, Cursor, Gemini, Copilot, Grok, GroqCloud, ElevenLabs, Deepgram, z.ai, Sakana AI, MiniMax, Kiro, Zed, Vertex AI, Augment, OpenRouter, LiteLLM, LLM Proxy, Codebuff, Command Code, AWS Bedrock, and many newer coding providers. One status item per provider, or Merge Icons mode with a provider switcher. No Dock icon, minimal UI, dynamic bar icons.
 
 <img src="codexbar.png" alt="CodexBar menu popover with provider tiles, usage bars, and reset countdowns" width="520" />
+
+## Meta Muse support
+
+Adds first-class **Meta Muse** (`muse` / Muse Code) usage and token cost tracking to CodexBar, mirroring Codex and Claude Code.
+It automatically tracks daily and weekly rate limits, aggregates local JSON and JSONL session files, and computes live token totals and USD cost estimates across models (`muse-spark-1.3`, `muse-spark-1.2`, `muse-spark`, `muse-code`) using official Standard and Contributor tier pricing.
+
+<p>
+  <img src="Sources/CodexBar/Resources/ProviderIcon-muse.svg" alt="Meta Muse logo" width="72" />
+</p>
+
+Highlights:
+- Provider ID `muse` with display name `Muse` and Meta Blue branding (`#0064E0`).
+- Scans session logs from `~/.config/muse/sessions`, `~/.muse/sessions`, and `$MUSE_SESSIONS_DIR`.
+- Accurately aggregates prompt, completion, and cache read tokens.
+- Live cost calculation for **Today** and the **Last 30 days** in USD.
+- Rate limits: Primary window (Today limit resetting at midnight) and secondary window (Weekly quota).
+- Bundled CLI support: `codexbar usage --provider muse` and `codexbar cost --provider muse`.
+- Comprehensive documentation available in [docs/muse.md](docs/muse.md).
 
 ## Sakana AI support
 
