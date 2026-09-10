@@ -25,6 +25,7 @@ public struct MuseSettingsReader: Sendable {
 
         let home = FileManager.default.homeDirectoryForCurrentUser
         return [
+            home.appendingPathComponent(".local/share/muse/sessions", isDirectory: true),
             home.appendingPathComponent(".config/muse/sessions", isDirectory: true),
             home.appendingPathComponent(".muse/sessions", isDirectory: true),
             home.appendingPathComponent(".config/muse/logs", isDirectory: true),

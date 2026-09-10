@@ -121,6 +121,14 @@ public struct MuseUsageFetcher: Sendable {
                 if let ts = json["created_at"] as? String, let d = ISO8601DateFormatter().date(from: ts) {
                     return d
                 }
+                if let recordedAt = (json["recorded_at"] as? Double)
+                    ?? (json["recorded_at"] as? Int64).map({ Double($0) })
+                    ?? (json["recorded_at"] as? Int).map({ Double($0) })
+                {
+                    let seconds = recordedAt > 1e14 ? (recordedAt / 1_000_000.0) :
+                        (recordedAt > 1e11 ? (recordedAt / 1000.0) : recordedAt)
+                    return Date(timeIntervalSince1970: seconds)
+                }
                 return Date()
             }()
 
@@ -128,7 +136,22 @@ public struct MuseUsageFetcher: Sendable {
 
             let totalTokens: Int = {
                 if let t = json["total_tokens"] as? Int { return t }
-                if let u = json["usage"] as? [String: Any] {
+                var usageDict = json["usage"] as? [String: Any]
+                if usageDict == nil, let payload = json["payload"] as? [String: Any] {
+                    if let event = payload["event"] as? [String: Any],
+                       let record = event["record"] as? [String: Any],
+                       let quantity = record["quantity"] as? [String: Any]
+                    {
+                        usageDict = quantity
+                    } else if let record = payload["record"] as? [String: Any],
+                              let quantity = record["quantity"] as? [String: Any]
+                    {
+                        usageDict = quantity
+                    } else if let quantity = payload["quantity"] as? [String: Any] {
+                        usageDict = quantity
+                    }
+                }
+                if let u = usageDict {
                     let inp = (u["input_tokens"] as? Int) ?? (u["prompt_tokens"] as? Int) ?? 0
                     let out = (u["output_tokens"] as? Int) ?? (u["completion_tokens"] as? Int) ?? 0
                     return inp + out

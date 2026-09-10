@@ -344,6 +344,7 @@ public enum ProviderStoragePathCatalog {
             [
                 homePath(".config/muse"),
                 homePath(".muse"),
+                homePath(".local/share/muse"),
             ]
         default:
             []

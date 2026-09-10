@@ -259,29 +259,56 @@ extension CostUsageScanner {
         range: CostUsageDayRange,
         fallbackSessionId: String) -> MuseUsageRow?
     {
-        let tsText: String? = (obj["timestamp"] as? String)
+        var dayKey: String?
+        if let tsText = (obj["timestamp"] as? String)
             ?? (obj["created_at"] as? String)
             ?? (obj["time"] as? String)
             ?? (obj["date"] as? String)
+        {
+            dayKey = self.dayKeyFromTimestamp(tsText) ?? self.dayKeyFromParsedISO(tsText)
+        } else if let recordedAt = (obj["recorded_at"] as? Double)
+            ?? (obj["recorded_at"] as? Int64).map({ Double($0) })
+            ?? (obj["recorded_at"] as? Int).map({ Double($0) })
+        {
+            let seconds = recordedAt > 1e14 ? (recordedAt / 1_000_000.0) :
+                (recordedAt > 1e11 ? (recordedAt / 1000.0) : recordedAt)
+            dayKey = CostUsageDayRange.dayKey(from: Date(timeIntervalSince1970: seconds))
+        }
 
-        guard let tsText,
-              let dayKey = self.dayKeyFromTimestamp(tsText) ?? self.dayKeyFromParsedISO(tsText)
+        guard let dayKey,
+              CostUsageDayRange.isInRange(dayKey: dayKey, since: range.scanSinceKey, until: range.scanUntilKey)
         else {
             return nil
         }
 
-        guard CostUsageDayRange.isInRange(dayKey: dayKey, since: range.scanSinceKey, until: range.scanUntilKey) else {
-            return nil
+        var usageDict: [String: Any]? = (obj["usage"] as? [String: Any])
+            ?? ((obj["message"] as? [String: Any])?["usage"] as? [String: Any])
+        var modelCandidate: String? = (obj["model"] as? String)
+            ?? ((obj["message"] as? [String: Any])?["model"] as? String)
+
+        if let payload = obj["payload"] as? [String: Any] {
+            if modelCandidate == nil {
+                modelCandidate = (payload["model_id"] as? String) ?? (payload["model"] as? String)
+            }
+            if usageDict == nil {
+                if let event = payload["event"] as? [String: Any],
+                   let record = event["record"] as? [String: Any],
+                   let quantity = record["quantity"] as? [String: Any]
+                {
+                    usageDict = quantity
+                } else if let record = payload["record"] as? [String: Any],
+                          let quantity = record["quantity"] as? [String: Any]
+                {
+                    usageDict = quantity
+                } else if let quantity = payload["quantity"] as? [String: Any] {
+                    usageDict = quantity
+                }
+            }
         }
 
-        let modelRaw = (obj["model"] as? String)
-            ?? ((obj["message"] as? [String: Any])?["model"] as? String)
-            ?? "muse-spark-1.3"
+        let modelRaw = modelCandidate ?? "muse-spark-1.3"
         let model = CostUsagePricing.normalizeMuseModel(modelRaw)
-
-        let usage = (obj["usage"] as? [String: Any])
-            ?? ((obj["message"] as? [String: Any])?["usage"] as? [String: Any])
-            ?? obj
+        let usage = usageDict ?? obj
 
         let input = (usage["input_tokens"] as? Int)
             ?? (usage["prompt_tokens"] as? Int)
