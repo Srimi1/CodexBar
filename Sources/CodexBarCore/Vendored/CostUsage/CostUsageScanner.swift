@@ -162,6 +162,7 @@ enum CostUsageScanner {
     struct Options {
         var codexSessionsRoot: URL?
         var claudeProjectsRoots: [URL]?
+        var museSessionsRoots: [URL]?
         var cacheRoot: URL?
         var codexTraceDatabaseURL: URL?
         var codexScanBudgetForTesting: CodexScanBudget?
@@ -186,6 +187,7 @@ enum CostUsageScanner {
         init(
             codexSessionsRoot: URL? = nil,
             claudeProjectsRoots: [URL]? = nil,
+            museSessionsRoots: [URL]? = nil,
             cacheRoot: URL? = nil,
             codexTraceDatabaseURL: URL? = nil,
             calendar: Calendar = .current,
@@ -199,6 +201,7 @@ enum CostUsageScanner {
         {
             self.codexSessionsRoot = codexSessionsRoot
             self.claudeProjectsRoots = claudeProjectsRoots
+            self.museSessionsRoots = museSessionsRoots
             self.cacheRoot = cacheRoot
             self.codexTraceDatabaseURL = codexTraceDatabaseURL
             self.calendar = calendar
@@ -2011,6 +2014,12 @@ enum CostUsageScanner {
                 range: range,
                 now: now,
                 options: filtered,
+                checkCancellation: checkCancellation)
+        case .muse:
+            return try self.loadMuseDaily(
+                range: range,
+                now: now,
+                options: options,
                 checkCancellation: checkCancellation)
         default:
             return emptyReport

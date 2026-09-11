@@ -125,6 +125,7 @@ complete when the available scan window covers fewer days.
 | Zed | Zed editor Keychain session → `cloud.zed.dev/client/users/me` for plan and quota data (`local`). |
 | Notion AI | Browser cookies → workspace resolution and the AI usage allowance API (`web`). |
 | IBM Bob | API key from config/env → profile and per-team Bobcoin budget APIs (`api`). |
+| Meta Muse | Local Muse CLI session logs → daily/weekly token windows and token cost estimates (`local`). |
 
 ## Codex
 - App Auto: OAuth API first; falls back to CLI only when OAuth credentials are missing or auth/refresh is invalid.
@@ -661,3 +662,8 @@ Transient network failures keep the last successful usage for the same account a
 including multi-account menus and their widget data. The cached measurement time and source remain unchanged;
 failed refreshes do not add fresh utilization-history samples. Normal error reporting still applies after repeated
 failures. Authentication failures and invalidated account scopes do not restore cached usage from another scope.
+
+## Meta Muse
+- Scans `~/.local/share/muse/sessions`, `~/.config/muse/sessions`, and `~/.muse/sessions` for local token cost and usage tracking.
+- Reads plan tier from `~/.config/muse/settings.json`; optional `META_API_KEY` / `MUSE_API_KEY`.
+- Details: `docs/muse.md`.
